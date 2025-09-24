@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>NZXT Kraken Web Integration</title>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      color: white;
+      font-family: sans-serif;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .circle {
+      position: relative;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .info-box {
+      position: absolute;
+      width: 120px;
+      height: 60px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid white;
+      border-radius: 10px;
+      font-size: 12px;
+      padding: 5px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* Positionen im Kreis */
+    .box1 { top: 10px; left: 10px; }     /* CPU Util */
+    .box2 { top: 10px; right: 10px; }    /* CPU Temp */
+    .box3 { top: 120px; left: -30px; }   /* RAM Util */
+    .box4 { top: 120px; right: -30px; }  /* GPU Util */
+    .box5 { bottom: 10px; left: 10px; }  /* GPU Temp */
+    .box6 { bottom: 10px; right: 10px; } /* System Info */
+
+  </style>
+</head>
+<body>
+  <div class="circle">
+    <div class="info-box box1" id="cpu-util">CPU Util</div>
+    <div class="info-box box2" id="cpu-temp">CPU Temp</div>
+    <div class="info-box box3" id="ram-util">RAM Util</div>
+    <div class="info-box box4" id="gpu-util">GPU Util</div>
+    <div class="info-box box5" id="gpu-temp">GPU Temp</div>
+    <div class="info-box box6" id="sys-info">System</div>
+  </div>
+
+  <script>
+    function updateUI(data) {
+      const cpu = data.cpus?.[0] || {};
+      const gpu = data.gpus?.[0] || {};
+      const ram = data.ram || {};
+      const system = data.systemInfo || {};
+
+      document.getElementById("cpu-util").innerHTML =
+        `Util: ${cpu.loadPercent || 0}%<br>Freq: ${cpu.clockSpeedGHz?.toFixed(2) || '–'} GHz`;
+
+      document.getElementById("cpu-temp").innerHTML =
+        `Temp: ${cpu.temperature || 0}°C<br>Power: ${cpu.powerConsumption || 0} W`;
+
+      document.getElementById("ram-util").innerHTML =
+        `RAM: ${ram.usedPercent || 0}%<br>${Math.round(ram.usedGB)}/${Math.round(ram.totalGB)} GB`;
+
+      document.getElementById("gpu-util").innerHTML =
+        `Util: ${gpu.loadPercent || 0}%<br>VRAM: ${gpu.vramUsedPercent || 0}%`;
+
+      document.getElementById("gpu-temp").innerHTML =
+        `Temp: ${gpu.temperature || 0}°C<br>Power: ${gpu.powerConsumption || 0} W`;
+
+      const uptime = system.uptimeSeconds || 0;
+      const hours = Math.floor(uptime / 3600);
+      const minutes = Math.floor((uptime % 3600) / 60);
+      const seconds = uptime % 60;
+
+      document.getElementById("sys-info").innerHTML =
+        `Uptime: ${hours}h ${minutes}m ${seconds}s<br>` +
+        `Prozesse: ${system.processCount}<br>` +
+        `C: ${system.storageTemps?.[0]?.temperature || '–'}° G: ${system.gpuDieTemp || '–'}°`;
+    }
+
+    // Live NZXT Integration
+    if (window.nzxt && window.nzxt.v1 && window.nzxt.v1.onMonitoringDataUpdate) {
+      window.nzxt.v1.onMonitoringDataUpdate(updateUI);
+    } else {
+      // Fallback mit Dummy-Daten für Tests
+      updateUI({
+        cpus: [{ loadPercent: 32, clockSpeedGHz: 5.0, temperature: 75, powerConsumption: 170 }],
+        gpus: [{ loadPercent: 98, temperature: 71, vramUsedPercent: 35, powerConsumption: 272 }],
+        ram: { usedPercent: 43, usedGB: 27, totalGB: 64 },
+        systemInfo: { uptimeSeconds: 1530, processCount: 430, storageTemps: [{ temperature: 24 }], gpuDieTemp: 32 }
+      });
+    }
+  </script>
+</body>
+</html>
